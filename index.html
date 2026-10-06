@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UTM Link Builder | Socialist Fox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Manrope:wght@800&display=swap" rel="stylesheet">
+<meta name="description" content="Build consistent UTM-tagged campaign links, save presets and export to CSV. Runs entirely in your browser.">
+<style>
+  :root {
+    --bg: #f4f7fc; --card: #ffffff; --text: #2e3a52; --muted: #66728a;
+    --line: #dde4f0; --accent: #0a5bfc; --accent-text: #ffffff; --ok: #12925a; --warn: #c2410c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #070d1a; --card: #0e1729; --text: #e8eefb; --muted: #93a0ba;
+      --line: #1e2a44; --accent: #2f74ff; --accent-text: #ffffff; --ok: #4ade80; --warn: #fb923c; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--text); }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font: 800 28px/1.2 Manrope, Inter, system-ui, sans-serif; margin: 0 0 4px; letter-spacing: -0.02em; }
+  h1 span { color: var(--accent); }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .full { grid-column: 1 / -1; }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  label small { font-weight: 400; color: var(--muted); }
+  input, select { width: 100%; padding: 9px 10px; font: inherit; color: var(--text);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  button { font: inherit; font-weight: 600; padding: 9px 14px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--card); color: var(--text); }
+  button.primary { background: linear-gradient(135deg, #2f74ff, #0a5bfc 55%, #0849d6); border-color: var(--accent); color: var(--accent-text); }
+  .out { font-family: ui-monospace, Consolas, monospace; font-size: 13px; word-break: break-all;
+    background: var(--bg); border: 1px dashed var(--line); border-radius: 6px; padding: 12px; min-height: 44px; margin: 14px 0; }
+  .warn { color: var(--warn); font-size: 13px; margin: 0; }
+  .ok { color: var(--ok); font-size: 13px; }
+  .check { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+  .check input { width: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td.url { font-family: ui-monospace, Consolas, monospace; word-break: break-all; }
+  .empty { color: var(--muted); font-size: 13px; }
+  footer { color: var(--muted); font-size: 13px; text-align: center; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>UTM <span>Link Builder</span></h1>
+  <p class="sub">Tag campaign links the same way every time, so your analytics reports stay clean.</p>
+
+  <section class="card">
+    <div class="grid">
+      <div class="full">
+        <label for="url">Website URL <small>(required)</small></label>
+        <input id="url" placeholder="https://example.com/pricing" autocomplete="off">
+      </div>
+      <div>
+        <label for="source">Source <small>utm_source, required</small></label>
+        <input id="source" list="sources" placeholder="linkedin">
+        <datalist id="sources"><option>google</option><option>linkedin</option><option>facebook</option>
+          <option>instagram</option><option>x</option><option>newsletter</option><option>youtube</option></datalist>
+      </div>
+      <div>
+        <label for="medium">Medium <small>utm_medium, required</small></label>
+        <input id="medium" list="mediums" placeholder="social">
+        <datalist id="mediums"><option>cpc</option><option>social</option><option>paid_social</option>
+          <option>email</option><option>organic</option><option>referral</option><option>display</option></datalist>
+      </div>
+      <div>
+        <label for="campaign">Campaign <small>utm_campaign, required</small></label>
+        <input id="campaign" placeholder="spring_launch">
+      </div>
+      <div>
+        <label for="term">Term <small>utm_term, optional</small></label>
+        <input id="term" placeholder="crm software">
+      </div>
+      <div>
+        <label for="content">Content <small>utm_content, optional</small></label>
+        <input id="content" placeholder="hero_banner">
+      </div>
+      <div>
+        <label for="preset">Preset</label>
+        <select id="preset"><option value="">Load a saved preset...</option></select>
+      </div>
+      <div class="full check">
+        <input type="checkbox" id="normalize" checked>
+        <label for="normalize" style="margin:0;font-weight:400">Normalise values (lowercase, spaces to underscores) so "Spring Launch" and "spring_launch" don't split your reports</label>
+      </div>
+    </div>
+
+    <div class="out" id="out" aria-live="polite"></div>
+    <p class="warn" id="warn"></p>
+
+    <div class="row">
+      <button class="primary" id="copy">Copy link</button>
+      <button id="save">Add to history</button>
+      <button id="savePreset">Save as preset</button>
+      <button id="clear">Clear</button>
+      <span class="ok" id="status"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="row" style="justify-content:space-between;margin-bottom:10px">
+      <strong>History</strong>
+      <div class="row">
+        <button id="csv">Export CSV</button>
+        <button id="wipe">Clear history</button>
+      </div>
+    </div>
+    <div id="history"></div>
+  </section>
+
+  <footer>Runs entirely in your browser. Nothing is sent anywhere.<br>
+    Built by <a href="https://www.socialistfox.com">Socialist Fox</a>, custom software and AI automation.</footer>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var FIELDS = ["source", "medium", "campaign", "term", "content"];
+  var $ = function (id) { return document.getElementById(id); };
+  var store = {
+    get: function (k, d) { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } },
+    set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+
+  function clean(v) {
+    v = v.trim();
+    if (!$("normalize").checked) return v;
+    return v.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_\-.]/g, "");
+  }
+
+  function build() {
+    var warn = [];
+    var raw = $("url").value.trim();
+    if (!raw) return { link: "", warn: ["Enter a website URL to start."] };
+    if (!/^https?:\/\//i.test(raw)) raw = "https://" + raw;
+    var u;
+    try { u = new URL(raw); } catch (e) { return { link: "", warn: ["That URL doesn't look valid."] }; }
+
+    FIELDS.forEach(function (f) {
+      var v = clean($(f).value);
+      if (v) u.searchParams.set("utm_" + f, v); else u.searchParams.delete("utm_" + f);
+    });
+    ["source", "medium", "campaign"].forEach(function (f) {
+      if (!$(f).value.trim()) warn.push("utm_" + f + " is required by Google Analytics.");
+    });
+    if (/[A-Z]/.test($("source").value + $("medium").value + $("campaign").value) && !$("normalize").checked)
+      warn.push("Mixed case values are tracked as separate campaigns.");
+    return { link: u.toString(), warn: warn };
+  }
+
+  function render() {
+    var r = build();
+    $("out").textContent = r.link || "Your link will appear here.";
+    $("warn").textContent = r.warn.join(" ");
+  }
+
+  function flash(msg) {
+    $("status").textContent = msg;
+    clearTimeout(flash.t);
+    flash.t = setTimeout(function () { $("status").textContent = ""; }, 1800);
+  }
+
+  function currentValues() {
+    var o = { url: $("url").value.trim() };
+    FIELDS.forEach(function (f) { o[f] = $(f).value.trim(); });
+    return o;
+  }
+
+  function drawHistory() {
+    var h = store.get("utm-history", []);
+    if (!h.length) { $("history").innerHTML = '<p class="empty">Links you add will be listed here.</p>'; return; }
+    var t = document.createElement("table");
+    t.innerHTML = "<thead><tr><th>Campaign</th><th>Source / medium</th><th>Link</th><th></th></tr></thead>";
+    var tb = document.createElement("tbody");
+    h.forEach(function (row, i) {
+      var tr = document.createElement("tr");
+      [row.campaign, row.source + " / " + row.medium, row.link].forEach(function (txt, j) {
+        var td = document.createElement("td"); td.textContent = txt;
+        if (j === 2) td.className = "url";
+        tr.appendChild(td);
+      });
+      var td = document.createElement("td");
+      var b = document.createElement("button"); b.textContent = "Copy";
+      b.onclick = function () { copy(row.link); };
+      var d = document.createElement("button"); d.textContent = "Remove"; d.style.marginLeft = "6px";
+      d.onclick = function () { h.splice(i, 1); store.set("utm-history", h); drawHistory(); };
+      td.appendChild(b); td.appendChild(d); tr.appendChild(td);
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    $("history").innerHTML = ""; $("history").appendChild(t);
+  }
+
+  function copy(text) {
+    if (!text) return;
+    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+      .then(function () { flash("Copied"); })
+      .catch(function () { window.prompt("Copy this link:", text); });
+  }
+
+  function csvCell(v) { v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+
+  function drawPresets() {
+    var p = store.get("utm-presets", {});
+    var sel = $("preset");
+    sel.length = 1;
+    Object.keys(p).sort().forEach(function (name) {
+      var o = document.createElement("option"); o.value = name; o.textContent = name; sel.appendChild(o);
+    });
+  }
+
+  $("preset").onchange = function () {
+    var p = store.get("utm-presets", {})[this.value];
+    if (!p) return;
+    FIELDS.forEach(function (f) { $(f).value = p[f] || ""; });
+    render();
+  };
+
+  $("savePreset").onclick = function () {
+    var name = window.prompt("Preset name (for example: LinkedIn paid ads):");
+    if (!name) return;
+    var p = store.get("utm-presets", {});
+    var v = currentValues(); delete v.url;
+    p[name] = v; store.set("utm-presets", p); drawPresets(); flash("Preset saved");
+  };
+
+  $("copy").onclick = function () { copy(build().link); };
+
+  $("save").onclick = function () {
+    var r = build();
+    if (!r.link) return;
+    var h = store.get("utm-history", []);
+    var v = currentValues();
+    h.unshift({ date: new Date().toISOString().slice(0, 10), campaign: clean(v.campaign), source: clean(v.source),
+      medium: clean(v.medium), term: clean(v.term), content: clean(v.content), link: r.link });
+    store.set("utm-history", h.slice(0, 200)); drawHistory(); flash("Added");
+  };
+
+  $("csv").onclick = function () {
+    var h = store.get("utm-history", []);
+    if (!h.length) return;
+    var cols = ["date", "campaign", "source", "medium", "term", "content", "link"];
+    var lines = [cols.join(",")].concat(h.map(function (r) { return cols.map(function (c) { return csvCell(r[c]); }).join(","); }));
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
+    a.download = "utm-links.csv"; a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  };
+
+  $("clear").onclick = function () { ["url"].concat(FIELDS).forEach(function (f) { $(f).value = ""; }); render(); };
+  $("wipe").onclick = function () { if (confirm("Clear all saved links?")) { store.set("utm-history", []); drawHistory(); } };
+
+  // Prefill from the page's own query string, e.g. ?url=example.com&source=linkedin,
+  // so a team can share a half-filled builder link.
+  var q = new URLSearchParams(location.search);
+  ["url"].concat(FIELDS).forEach(function (f) { if (q.has(f)) $(f).value = q.get(f); });
+
+  ["url", "normalize"].concat(FIELDS).forEach(function (f) { $(f).addEventListener("input", render); });
+  render(); drawHistory(); drawPresets();
+})();
+</script>
+</body>
+</html>
